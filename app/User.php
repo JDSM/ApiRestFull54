@@ -30,6 +30,21 @@ class User extends Authenticatable
         'admin',
     ];
 
+    //Bloque Mutador cambia el valor a minusculas
+    public function setNameAttribute($valor) {
+        $this->attributes['name'] = strtolower($valor);
+    }
+
+    //Bloque Mutador cambia el valor a minusculas
+    public function setEmailAttribute ($valor) {
+        $this->attributes['email'] = strtolower($valor);
+    }
+
+    //bloque Accesor coloca en mayuscula la primera letra pero solo para consulta
+    public function getNameAttribute ($valor) {
+        return ucfirst($valor);
+    }
+
     /**
      * The attributes that should be hidden for arrays.
      *
