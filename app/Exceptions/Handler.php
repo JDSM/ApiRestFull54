@@ -7,7 +7,11 @@ use App\Traits\ApiResponser;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Validation\ValidationException;
-
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Illuminate\Database\QueryException;
 class Handler extends ExceptionHandler
 {
     use ApiResponser;
@@ -50,7 +54,46 @@ class Handler extends ExceptionHandler
         if ($exception instanceof ValidationException){
             return $this->convertValidationExceptionToResponse($exception, $request);
         }
-        return parent::render($request, $exception);
+
+        if ($exception instanceof ModelNotFoundException){
+            $modelo = strtolower(class_basename($exception->getModel()));
+            return $this->errorResponse('No existe ninguna instancia de '.$modelo.' con el id expecificado', 404);
+        }
+
+        if ($exception instanceof AuthenticationException) {
+            return $this-unauthenticated($request, $exception);
+        }
+
+        if ($exception instanceof AuthorizationException) {
+            return $this->errorResponse('No posee permisos para ejecutar esta accion', 403);
+        }
+
+        if ($exception instanceof NotFoundHttpException) {
+            return $this->errorResponse('No se encontro la URL especificada', 404);
+        }
+
+        if ($exception instanceof MethodNotAllowedHttpException) {
+            return $this->errorResponse('El metodo especificado en la peticion no es valido', 405);
+        }
+        //este bloque valida todas las demas excepciones http 
+        if ($exception instanceof HttpException) {
+            return $this->errorResponse($exception->getMessage(), $exception->getStatusCode());
+        }
+        //este bloque valida todas las excepciones tipo query por medio de un codigo de error
+        if ($exception instanceof QueryException) {
+            //dd($exception); // muestra la depuracion de todos los codigos de error de las queryexception 
+            $codigo = $exception->errorInfo[1];
+            if($codigo == 1451){
+                return $this->errorResponse('No se puede eliminar de forma permanente el recurso porque esta relacionado con algun otro. ', 409);
+            } 
+        }
+        //ete bloque valida si estamos en modo debug o de produccion en el if permite mostrar los errores 
+        if (config('app.debug')){
+            return parent::render($request, $exception);
+
+        }
+        return $this->errorResponse('Falla inesperada. Intente Luego', 500);
+
     }
 
     /**
@@ -62,11 +105,7 @@ class Handler extends ExceptionHandler
      */
     protected function unauthenticated($request, AuthenticationException $exception)
     {
-        if ($request->expectsJson()) {
-            return response()->json(['error' => 'Unauthenticated.'], 401);
-        } 
-
-        return redirect()->guest(route('login'));
+        return $this->errorResponse('No autenticado.', 401);
     }
     /**
      * Create a response object from the given validation exception.
