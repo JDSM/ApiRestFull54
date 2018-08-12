@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Seller;
 use Illuminate\Http\Request;
 use App\Http\Controllers\ApiController;
 use App\Seller;
+
 class SellerController extends ApiController
 {
     /**
@@ -18,10 +19,10 @@ class SellerController extends ApiController
 
         return $this->showAll($vendedores);
     }
-    public function show($id)
+    public function show(Seller $seller)
     {
-        $vendedor = Seller::has('products')->findOrFail($id);
+        //$vendedor = Seller::has('products')->findOrFail($id);
 
-        return $this->showOne($vendedor);
+        return $this->showOne($seller);
     }
 }
